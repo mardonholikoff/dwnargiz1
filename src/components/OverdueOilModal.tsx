@@ -73,7 +73,7 @@ export const OverdueOilModal: React.FC<OverdueOilModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Oxirgi almashtirilganiga 1 oydan (30 kundan) oshgan barcha avtomobillar ro'yxati
+                Belgilangan oralig'i (yoki 30 kun) bo'yicha moy almashtirish vaqti kelgan barcha avtomobillar ro'yxati
               </p>
             </div>
           </div>
@@ -99,31 +99,52 @@ export const OverdueOilModal: React.FC<OverdueOilModalProps> = ({
             </div>
           ) : (
             filteredOverdueList.map((item) => {
-              const { key, plate, customerName, phoneNumber, carModel, latestOilRecord, daysAgo, totalServices } = item;
+              const { key, plate, customerName, phoneNumber, carModel, latestOilRecord, daysAgo, thresholdDays, isCustomInterval, totalServices } = item;
               const formattedPhone = phoneNumber || latestOilRecord.phoneNumber || '';
               const cleanPhone = formattedPhone.replace(/\s+/g, '');
 
               // Determine urgency level badge
               let UrgencyBadge = (
-                <span className="px-2.5 py-1 rounded-lg bg-amber-950/80 text-amber-300 border border-amber-800/80 font-bold text-[11px] flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{daysAgo} kun avval</span>
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="px-2.5 py-1 rounded-lg bg-amber-950/80 text-amber-300 border border-amber-800/80 font-bold text-[11px] flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{daysAgo} kun o'tdi</span>
+                  </span>
+                  {isCustomInterval && (
+                    <span className="text-[10px] font-medium text-amber-400/90 font-mono">
+                      (Oraliq: {thresholdDays} kun)
+                    </span>
+                  )}
+                </div>
               );
 
-              if (daysAgo >= 90) {
+              if (daysAgo >= thresholdDays * 2 || daysAgo >= 90) {
                 UrgencyBadge = (
-                  <span className="px-2.5 py-1 rounded-lg bg-red-950/90 text-red-300 border border-red-800 font-extrabold text-[11px] flex items-center gap-1 animate-pulse">
-                    <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
-                    <span>{daysAgo} kun avval (MUDDAT O'TGAN! 🚨)</span>
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="px-2.5 py-1 rounded-lg bg-red-950/90 text-red-300 border border-red-800 font-extrabold text-[11px] flex items-center gap-1 animate-pulse">
+                      <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                      <span>{daysAgo} kun (MUDDAT O'TGAN! 🚨)</span>
+                    </span>
+                    {isCustomInterval && (
+                      <span className="text-[10px] font-medium text-red-300 font-mono">
+                        (Oraliq: {thresholdDays} kun)
+                      </span>
+                    )}
+                  </div>
                 );
-              } else if (daysAgo >= 60) {
+              } else if (daysAgo >= thresholdDays + 15 || daysAgo >= 60) {
                 UrgencyBadge = (
-                  <span className="px-2.5 py-1 rounded-lg bg-orange-950/90 text-orange-300 border border-orange-800 font-bold text-[11px] flex items-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
-                    <span>{daysAgo} kun avval (60+ kun ⚠️)</span>
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="px-2.5 py-1 rounded-lg bg-orange-950/90 text-orange-300 border border-orange-800 font-bold text-[11px] flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
+                      <span>{daysAgo} kun ({thresholdDays}+ kun ⚠️)</span>
+                    </span>
+                    {isCustomInterval && (
+                      <span className="text-[10px] font-medium text-orange-300 font-mono">
+                        (Oraliq: {thresholdDays} kun)
+                      </span>
+                    )}
+                  </div>
                 );
               }
 

@@ -14,7 +14,7 @@ import {
   Unsubscribe
 } from 'firebase/firestore';
 import firebaseConfigFile from '../../firebase-applet-config.json';
-import { ServiceRecord } from '../types';
+import { ServiceRecord, DatabaseWipeRequest } from '../types';
 
 // Safely resolve configuration from import.meta.env or firebase-applet-config.json
 const env = (typeof import.meta !== 'undefined' && (import.meta as any).env) ? (import.meta as any).env : ({} as any);
@@ -341,3 +341,138 @@ export async function seedCloudIfEmpty(initialRecords: ServiceRecord[]): Promise
     console.warn('Failed to seed cloud database:', err);
   }
 }
+
+const WIPE_REQUEST_DOC_ID = 'wipe_request';
+const LOCAL_STORAGE_WIPE_KEY = 'dw_wipe_request_state';
+
+/**
+ * Real-time listener for database wipe request (1 hour delayed deletion)
+ */
+export function subscribeToWipeRequest(onData: (request: DatabaseWipeRequest | null) => void): Unsubscribe {
+  // 1. Initial emit from localStorage
+  try {
+    const local = localStorage.getItem(LOCAL_STORAGE_WIPE_KEY);
+    if (local) {
+      const parsed = JSON.parse(local);
+      onData(parsed);
+    } else {
+      onData(null);
+    }
+  } catch {
+    onData(null);
+  }
+
+  if (!db) {
+    return () => {};
+  }
+
+  try {
+    const docRef = doc(db, 'app_settings', WIPE_REQUEST_DOC_ID);
+    return onSnapshot(
+      docRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data() as DatabaseWipeRequest;
+          if (data && data.status === 'pending') {
+            try {
+              localStorage.setItem(LOCAL_STORAGE_WIPE_KEY, JSON.stringify(data));
+            } catch {}
+            onData(data);
+          } else {
+            try {
+              localStorage.removeItem(LOCAL_STORAGE_WIPE_KEY);
+            } catch {}
+            onData(null);
+          }
+        } else {
+          try {
+            localStorage.removeItem(LOCAL_STORAGE_WIPE_KEY);
+          } catch {}
+          onData(null);
+        }
+      },
+      (err) => {
+        console.warn('Wipe request subscription error:', err);
+        try {
+          const local = localStorage.getItem(LOCAL_STORAGE_WIPE_KEY);
+          if (local) onData(JSON.parse(local));
+          else onData(null);
+        } catch {
+          onData(null);
+        }
+      }
+    );
+  } catch (err) {
+    console.warn('Failed to attach wipe request listener:', err);
+    return () => {};
+  }
+}
+
+/**
+ * Start a 1-hour database wipe request
+ */
+export async function startDatabaseWipeRequest(requestedBy: string = 'admindw'): Promise<DatabaseWipeRequest> {
+  const now = new Date();
+  const scheduledTime = new Date(now.getTime() + 60 * 60 * 1000); // exactly 1 hour (3600000 ms)
+
+  const wipeReq: DatabaseWipeRequest = {
+    requestedAt: now.toISOString(),
+    scheduledFor: scheduledTime.toISOString(),
+    requestedBy,
+    status: 'pending',
+  };
+
+  try {
+    localStorage.setItem(LOCAL_STORAGE_WIPE_KEY, JSON.stringify(wipeReq));
+  } catch {}
+
+  if (db) {
+    try {
+      const docRef = doc(db, 'app_settings', WIPE_REQUEST_DOC_ID);
+      await withTimeout(setDoc(docRef, wipeReq), 4000, null);
+    } catch (err) {
+      console.warn('Failed to save wipe request in cloud:', err);
+    }
+  }
+
+  return wipeReq;
+}
+
+/**
+ * Cancel a pending database wipe request
+ */
+export async function cancelDatabaseWipeRequest(): Promise<boolean> {
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_WIPE_KEY);
+  } catch {}
+
+  if (db) {
+    try {
+      const docRef = doc(db, 'app_settings', WIPE_REQUEST_DOC_ID);
+      await withTimeout(deleteDoc(docRef), 4000, null);
+    } catch (err) {
+      console.warn('Failed to delete wipe request from cloud:', err);
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Execute actual wipe after 1-hour delay confirmed
+ */
+export async function executeDatabaseWipe(): Promise<boolean> {
+  // 1. Cancel/delete wipe request doc
+  await cancelDatabaseWipeRequest();
+
+  // 2. Clear cloud records
+  const result = await clearAllRecordsFromCloud();
+
+  // 3. Clear local storage records
+  try {
+    localStorage.removeItem('daewoo_nargiz_records_v1');
+  } catch {}
+
+  return result;
+}
+

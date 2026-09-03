@@ -57,8 +57,8 @@ export const PWAInstallBar: React.FC<PWAInstallBarProps> = ({
   };
 
   return (
-    <div className="bg-slate-900/95 border-b border-slate-800 text-xs py-2.5 px-4 shadow-inner">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
+    <div className="bg-slate-900/95 border-b border-slate-800 text-xs py-2.5 shadow-inner">
+      <div className="max-w-6xl mx-auto px-3.5 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
         {/* Network & Offline Status */}
         <div className="flex flex-wrap items-center gap-2.5">
           {isOnline ? (

@@ -48,11 +48,14 @@ export interface OverdueCustomer {
   carModel: string;
   latestOilRecord: ServiceRecord;
   daysAgo: number;
+  thresholdDays: number;
+  isCustomInterval?: boolean;
   totalServices: number;
 }
 
 /**
- * Extract unique customers whose LATEST service was 30+ days ago (1 month+)
+ * Extract unique customers whose LATEST service was thresholdDays+ ago
+ * (Either custom visitIntervalDays if set, or default 30 days)
  */
 export function getOverdueOilCustomers(records: ServiceRecord[]): OverdueCustomer[] {
   if (!Array.isArray(records) || records.length === 0) return [];
@@ -93,8 +96,16 @@ export function getOverdueOilCustomers(records: ServiceRecord[]): OverdueCustome
     const latestOilRecord = validRecords[0];
     const daysAgo = getDaysAgo(latestOilRecord.createdAt);
 
-    // Check if the latest service was 30 or more days ago
-    if (daysAgo >= 30) {
+    // Check if customer has a specified visitIntervalDays on any of their records (newest takes precedence)
+    const customIntervalRecord = customerRecords.find(
+      (c) => c.visitIntervalDays && Number(c.visitIntervalDays) > 0
+    );
+    const thresholdDays = customIntervalRecord?.visitIntervalDays
+      ? Number(customIntervalRecord.visitIntervalDays)
+      : 30;
+
+    // Check if the latest service was >= thresholdDays ago
+    if (daysAgo >= thresholdDays) {
       const plate = latestOilRecord.carPlate || (customerRecords.find((c) => c.carPlate)?.carPlate) || "NOMA'LUM";
       const customerName = latestOilRecord.customerName || (customerRecords.find((c) => c.customerName)?.customerName) || "Mijoz";
       const phoneNumber = latestOilRecord.phoneNumber || (customerRecords.find((c) => c.phoneNumber)?.phoneNumber) || "";
@@ -108,13 +119,15 @@ export function getOverdueOilCustomers(records: ServiceRecord[]): OverdueCustome
         carModel,
         latestOilRecord,
         daysAgo,
+        thresholdDays,
+        isCustomInterval: Boolean(customIntervalRecord?.visitIntervalDays),
         totalServices: customerRecords.length,
       });
     }
   });
 
-  // Sort by most overdue first (highest daysAgo)
-  overdueList.sort((a, b) => b.daysAgo - a.daysAgo);
+  // Sort by most overdue beyond their threshold first
+  overdueList.sort((a, b) => (b.daysAgo - b.thresholdDays) - (a.daysAgo - a.thresholdDays));
 
   return overdueList;
 }

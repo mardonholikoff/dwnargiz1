@@ -16,11 +16,11 @@ export const StatsBar: React.FC<StatsBarProps> = ({ records, onOpenOverdueOilMod
 
   return (
     <div className="w-full">
-      {/* 30+ kun moy vaqti o'tganlar tahlil kartasi */}
+      {/* Moy almashtirish vaqti kelganlar tahlil kartasi */}
       <div
         onClick={onOpenOverdueOilModal}
         className="bg-slate-900 border border-amber-500/30 hover:border-amber-500/70 hover:bg-slate-850 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl cursor-pointer transition-all group relative overflow-hidden"
-        title="30 kundan oshgan barcha mijozlar ro'yxatini ko'rish"
+        title="Moy almashtirish vaqti kelgan barcha mijozlar ro'yxatini ko'rish"
       >
         <div className="flex items-center gap-4">
           <div className="p-3.5 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 group-hover:bg-amber-500/30 transition-all shrink-0 shadow-inner">
@@ -29,7 +29,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({ records, onOpenOverdueOilMod
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-extrabold text-amber-400 uppercase tracking-wider block">
-                Moy Almashtirish Vaqti 30+ Kundan Oshgan Mijozlar
+                Moy Almashtirish Vaqti Kelganlar
               </span>
               <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-950/80 text-amber-300 border border-amber-800/80 text-[10px] font-bold">
                 <AlertTriangle className="w-3 h-3 text-amber-400" /> Tahlil
@@ -42,7 +42,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({ records, onOpenOverdueOilMod
               </span>
               <span className="text-sm text-slate-300 font-bold">ta mijoz</span>
               <span className="text-xs text-slate-400 font-normal hidden md:inline ml-2">
-                (Oxirgi xizmat ko'rsatilganiga 30 kundan oshganlar)
+                (Belgilangan muddat yoki 30 kundan oshganlar)
               </span>
             </div>
           </div>

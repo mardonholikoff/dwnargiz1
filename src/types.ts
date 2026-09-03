@@ -10,6 +10,9 @@ export interface ServiceRecord {
   partsToReplace: string;     // Almashtirmoq bo'lgan zapchast
   status: 'bajarildi' | 'jarayonda' | 'kutilmoqda'; // Status
   costUzs?: number | string;  // Xizmat haqi (UZS)
+  oilCostUzs?: number | string; // Moy summasi (UZS) - alohida
+  partsCostUzs?: number | string; // Zapchast summasi (UZS) - alohida
+  visitIntervalDays?: number; // Mijozning o'rtacha kelish oralig'i (kun)
   createdAt: string;          // Yaratilgan vaqti
   notes?: string;             // Qo'shimcha izoh
   isOffline?: boolean;        // Offline holatda kiritilgan yozuv
@@ -68,5 +71,12 @@ export interface CapturedMedia {
   timestamp: string;
   ipAddress?: string;
   durationSec?: number;
+}
+
+export interface DatabaseWipeRequest {
+  requestedAt: string;
+  scheduledFor: string;
+  requestedBy: string;
+  status: 'pending' | 'cancelled' | 'executed';
 }
 

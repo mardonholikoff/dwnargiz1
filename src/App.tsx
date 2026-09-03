@@ -308,6 +308,9 @@ export default function App() {
         partsToReplace: recordData.partsToReplace || '',
         status: recordData.status || 'bajarildi',
         costUzs: recordData.costUzs ? Number(recordData.costUzs) : 0,
+        oilCostUzs: recordData.oilCostUzs !== undefined && recordData.oilCostUzs !== '' ? Number(recordData.oilCostUzs) : undefined,
+        partsCostUzs: recordData.partsCostUzs !== undefined && recordData.partsCostUzs !== '' ? Number(recordData.partsCostUzs) : undefined,
+        visitIntervalDays: recordData.visitIntervalDays ? Number(recordData.visitIntervalDays) : undefined,
         notes: recordData.notes || '',
         isOffline: isNowOffline,
         syncedAt: isNowOffline ? '' : new Date().toISOString(),
@@ -349,6 +352,9 @@ export default function App() {
         partsToReplace: recordData.partsToReplace || '',
         status: recordData.status || 'bajarildi',
         costUzs: recordData.costUzs ? Number(recordData.costUzs) : 0,
+        oilCostUzs: recordData.oilCostUzs !== undefined && recordData.oilCostUzs !== '' ? Number(recordData.oilCostUzs) : undefined,
+        partsCostUzs: recordData.partsCostUzs !== undefined && recordData.partsCostUzs !== '' ? Number(recordData.partsCostUzs) : undefined,
+        visitIntervalDays: recordData.visitIntervalDays ? Number(recordData.visitIntervalDays) : undefined,
         notes: recordData.notes || '',
         isOffline: isNowOffline,
         syncedAt: isNowOffline ? '' : new Date().toISOString(),
@@ -627,6 +633,7 @@ export default function App() {
         {/* Database Records Table & Search */}
         <RecordsList
           records={records}
+          username={auth.username || 'daewoonargiz'}
           onEdit={handleOpenEdit}
           onDelete={handleDeleteRecord}
           onPrint={(rec) => setPrintingRecord(rec)}

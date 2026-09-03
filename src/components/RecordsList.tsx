@@ -19,7 +19,9 @@ import {
   Droplet,
   Maximize2,
   Calendar,
-  X
+  X,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface RecordsListProps {
@@ -107,6 +109,8 @@ export const RecordsList: React.FC<RecordsListProps> = ({
   const [isFullTableModalOpen, setIsFullTableModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table'); // Default to Excel Table View
   const [sortBy, setSortBy] = useState<'oldest_oil' | 'newest_oil' | 'newest' | 'oldest' | 'mileage_desc' | 'mileage_asc'>('newest');
+  // Revealing today's records for daewoonargiz (starts blurred)
+  const [isRevealed, setIsRevealed] = useState<boolean>(username !== 'daewoonargiz');
 
   // Debounced search logger
   useEffect(() => {
@@ -355,22 +359,77 @@ export const RecordsList: React.FC<RecordsListProps> = ({
         </div>
       ) : viewMode === 'grid' ? (
         /* Card Grid View */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredRecords.map((record) => (
-            <RecordCard
-              key={record.id}
-              record={record}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onPrint={onPrint}
-              onSelectCustomer={onSelectCustomer}
-              onSyncRecord={onSyncRecord}
-            />
-          ))}
+        <div className="space-y-4">
+          {username === 'daewoonargiz' && !isRevealed && (
+            <div className="p-4 bg-slate-900/95 border border-blue-500/50 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  <EyeOff className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">
+                    Bugungi yozuvlar xiralashtirilgan
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    Ma&apos;lumotlarni ko&apos;rish uchun &quot;Ko&apos;rish 👁️&quot; tugmasini bosing.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRevealed(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-2 cursor-pointer shrink-0"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Ko&apos;rish 👁️</span>
+              </button>
+            </div>
+          )}
+
+          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${!isRevealed ? 'filter blur-md select-none pointer-events-none transition-all duration-300' : 'transition-all duration-300'}`}>
+            {filteredRecords.map((record) => (
+              <RecordCard
+                key={record.id}
+                record={record}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onPrint={onPrint}
+                onSelectCustomer={onSelectCustomer}
+                onSyncRecord={onSyncRecord}
+              />
+            ))}
+          </div>
         </div>
       ) : (
         /* Excel Tartibida Jadval (Excel Spreadsheet View) */
         <div className="space-y-3">
+          {/* Blur notification banner for daewoonargiz */}
+          {username === 'daewoonargiz' && !isRevealed && (
+            <div className="p-4 bg-slate-900/95 border border-blue-500/50 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  <EyeOff className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">
+                    Bugungi yozuvlar xiralashtirilgan
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    Ma&apos;lumotlarni ko&apos;rish uchun &quot;Ko&apos;rish 👁️&quot; tugmasini bosing.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRevealed(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-2 cursor-pointer shrink-0"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Ko&apos;rish 👁️</span>
+              </button>
+            </div>
+          )}
+
           {/* Excel Toolbar & Summary Header */}
           <div className="bg-emerald-950/40 border border-emerald-800/80 rounded-2xl p-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 shadow-xl">
             <div className="flex items-center gap-3">
@@ -421,25 +480,46 @@ export const RecordsList: React.FC<RecordsListProps> = ({
                 </button>
               </div>
 
-              {/* Alohida Ekran Analytics & Full Table Modal Button */}
-              <button
-                onClick={() => onOpenAnalyticsModal ? onOpenAnalyticsModal() : setIsFullTableModalOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Tahlillar, mijozlar statistikasi va to'liq jadval analitikasi"
-              >
-                <Maximize2 className="w-4 h-4" />
-                <span>To'liq Jadval & Analitika 📊</span>
-              </button>
+              {/* Toggle Reveal / Blur Button for daewoonargiz */}
+              {username === 'daewoonargiz' && (
+                <button
+                  type="button"
+                  onClick={() => setIsRevealed(!isRevealed)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
+                    isRevealed
+                      ? 'bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-700'
+                      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30'
+                  }`}
+                  title={isRevealed ? "Yozuvlarni yashirish/xiralashtirish" : "Bugungi yozuvlarni ko'rish"}
+                >
+                  {isRevealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <span>{isRevealed ? "Yashirish" : "Ko'rish 👁️"}</span>
+                </button>
+              )}
 
-              {/* Actions: Download Excel CSV / Print */}
-              <button
-                onClick={handleDownloadExcel}
-                className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Barcha ma'lumotlarni Excel fayli (.csv) holatida yuklab olish"
-              >
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Excel</span>
-              </button>
+              {/* Alohida Ekran Analytics & Full Table Modal Button - Hidden for daewoonargiz */}
+              {username !== 'daewoonargiz' && (
+                <button
+                  onClick={() => onOpenAnalyticsModal ? onOpenAnalyticsModal() : setIsFullTableModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Tahlillar, mijozlar statistikasi va to'liq jadval analitikasi"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                  <span>To&apos;liq Jadval & Analitika 📊</span>
+                </button>
+              )}
+
+              {/* Actions: Download Excel CSV / Print - Excel hidden for daewoonargiz */}
+              {username !== 'daewoonargiz' && (
+                <button
+                  onClick={handleDownloadExcel}
+                  className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Barcha ma'lumotlarni Excel fayli (.csv) holatida yuklab olish"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Excel</span>
+                </button>
+              )}
 
               <button
                 onClick={handlePrintTable}
@@ -479,7 +559,7 @@ export const RecordsList: React.FC<RecordsListProps> = ({
               </thead>
 
               {/* Table Rows */}
-              <tbody className="divide-y divide-slate-700/80 text-slate-200 font-normal">
+              <tbody className={`divide-y divide-slate-700/80 text-slate-200 font-normal ${!isRevealed ? 'filter blur-md select-none pointer-events-none transition-all duration-300' : 'transition-all duration-300'}`}>
                 {filteredRecords.map((record, index) => {
                   const isOil = checkIsOilRecord(record);
                   const daysAgo = getDaysAgo(record.createdAt);
@@ -665,15 +745,23 @@ export const RecordsList: React.FC<RecordsListProps> = ({
               {/* Excel Table Footer Summary Row */}
               <tfoot>
                 <tr className="bg-slate-950 border-t-2 border-slate-700 text-xs font-bold text-white">
-                  <td colSpan={7} className="py-3.5 px-4 border-r border-slate-700 text-emerald-400 uppercase tracking-wider text-right">
-                    JAMI SUMMA ({filteredRecords.length} TA XIZMAT):
-                  </td>
-                  <td className="py-3.5 px-3 border-r border-slate-700 text-right font-mono text-emerald-300 text-sm font-extrabold">
-                    {stats.totalCost.toLocaleString('uz-UZ')} so&apos;m
-                  </td>
-                  <td colSpan={3} className="py-3.5 px-3 text-slate-400 font-normal italic text-center">
-                    "Daewoo Nargiz Auto Servis" rasmiy jadvali
-                  </td>
+                  {username === 'daewoonargiz' ? (
+                    <td colSpan={11} className="py-3.5 px-4 text-slate-400 text-center uppercase tracking-wider font-semibold">
+                      Jadvalda jami {filteredRecords.length} ta xizmat ko&apos;rsatilgan
+                    </td>
+                  ) : (
+                    <>
+                      <td colSpan={7} className="py-3.5 px-4 border-r border-slate-700 text-emerald-400 uppercase tracking-wider text-right">
+                        JAMI SUMMA ({filteredRecords.length} TA XIZMAT):
+                      </td>
+                      <td className="py-3.5 px-3 border-r border-slate-700 text-right font-mono text-emerald-300 text-sm font-extrabold">
+                        {stats.totalCost.toLocaleString('uz-UZ')} so&apos;m
+                      </td>
+                      <td colSpan={3} className="py-3.5 px-3 text-slate-400 font-normal italic text-center">
+                        &quot;Daewoo Nargiz Auto Servis&quot; rasmiy jadvali
+                      </td>
+                    </>
+                  )}
                 </tr>
               </tfoot>
             </table>

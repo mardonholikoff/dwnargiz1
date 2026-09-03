@@ -70,10 +70,12 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Quick Stats Badges */}
         <div className="hidden lg:flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">
-            <Car className="w-4 h-4 text-blue-400" />
-            <span>Jami Mijozlar: <strong className="text-white font-bold">{totalRecords} ta</strong></span>
-          </div>
+          {username !== 'daewoonargiz' && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">
+              <Car className="w-4 h-4 text-blue-400" />
+              <span>Jami Mijozlar: <strong className="text-white font-bold">{totalRecords} ta</strong></span>
+            </div>
+          )}
 
           <button
             onClick={handleOpenOverdue}
@@ -81,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
             title="Moy almashtirish vaqti kelgan mijozlar ro'yxatini ko'rish"
           >
             <Wrench className="w-4 h-4 text-amber-400" />
-            <span>Moy &gt; 1 oy: <strong className="text-amber-400 font-bold">{oilOverMonthCount} ta</strong></span>
+            <span>Vaqti kelganlar: <strong className="text-amber-400 font-bold">{oilOverMonthCount}</strong></span>
           </button>
         </div>
 
@@ -99,15 +101,17 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Analytics & Excel Modal Button */}
-          <button
-            onClick={handleOpenAnalytics}
-            title="Analitika, Mijozlar hisoboti va Excel eksport"
-            className="p-2 sm:px-3 sm:py-2 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 font-bold text-xs rounded-xl border border-emerald-700/60 flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/50"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-            <span className="hidden sm:inline">Analitika & Excel 📊</span>
-          </button>
+          {/* Analytics & Excel Modal Button - Hidden for daewoonargiz */}
+          {username !== 'daewoonargiz' && (
+            <button
+              onClick={handleOpenAnalytics}
+              title="Analitika, Mijozlar hisoboti va Excel eksport"
+              className="p-2 sm:px-3 sm:py-2 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 font-bold text-xs rounded-xl border border-emerald-700/60 flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/50"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline">Analitika & Excel 📊</span>
+            </button>
+          )}
 
           {/* New Record Button */}
           <button
