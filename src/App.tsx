@@ -21,6 +21,7 @@ import {
   deleteRecordFromCloud,
   clearAllRecordsFromCloud,
   syncOfflineRecordsToCloud,
+  updateCustomerRecordsInCloud,
 } from './lib/firebase';
 import {
   updateSessionHeartbeat,
@@ -519,6 +520,54 @@ export default function App() {
     );
   };
 
+  // Batch update customer info across entire system (affecting all historical records)
+  const handleBatchUpdateCustomer = async (
+    recordIds: string[],
+    updatedFields: {
+      customerName: string;
+      carPlate: string;
+      phoneNumber: string;
+      carModel?: string;
+    }
+  ) => {
+    const cleanName = updatedFields.customerName.trim();
+    const cleanPlate = updatedFields.carPlate.toUpperCase().trim();
+    const cleanPhone = updatedFields.phoneNumber.trim();
+    const cleanModel = updatedFields.carModel?.trim();
+
+    // 1. Update local state
+    const updatedRecords = records.map((r) => {
+      if (recordIds.includes(r.id)) {
+        return {
+          ...r,
+          customerName: cleanName,
+          carPlate: cleanPlate,
+          phoneNumber: cleanPhone,
+          ...(cleanModel ? { carModel: cleanModel } : {}),
+        };
+      }
+      return r;
+    });
+
+    setRecords(updatedRecords);
+    localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(updatedRecords));
+
+    // 2. Sync to Cloud Firestore if online
+    if (navigator.onLine) {
+      await updateCustomerRecordsInCloud(recordIds, {
+        customerName: cleanName,
+        carPlate: cleanPlate,
+        phoneNumber: cleanPhone,
+        carModel: cleanModel,
+      });
+    }
+
+    showToast(
+      `Mijoz "${cleanName}" (${cleanPlate}) ma'lumotlari butun tizimda muvaffaqiyatli yangilandi!`,
+      'success'
+    );
+  };
+
   // Open Create Modal
   const handleOpenCreate = () => {
     setEditingRecord(null);
@@ -571,6 +620,7 @@ export default function App() {
         onSaveRecord={handleSaveRecord}
         onDeleteRecord={handleDeleteRecord}
         onClearAllRecords={handleResetToDemo}
+        onUpdateCustomerInfo={handleBatchUpdateCustomer}
       />
     );
   }

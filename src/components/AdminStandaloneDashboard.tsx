@@ -8,7 +8,9 @@ import {
   Zap,
   Clock,
   UserCheck,
-  Database
+  Database,
+  Users,
+  Wrench
 } from 'lucide-react';
 import { DeviceSession, AdminLog, ServiceRecord } from '../types';
 import {
@@ -23,9 +25,11 @@ import {
   subscribeToRecords,
   saveRecordToCloud,
   deleteRecordFromCloud,
-  clearAllRecordsFromCloud
+  clearAllRecordsFromCloud,
+  updateCustomerRecordsInCloud
 } from '../lib/firebase';
 import { AdminRecordsManager } from './AdminRecordsManager';
+import { AdminCustomerCrm } from './AdminCustomerCrm';
 
 interface AdminStandaloneDashboardProps {
   username: string;
@@ -34,6 +38,15 @@ interface AdminStandaloneDashboardProps {
   onSaveRecord?: (record: ServiceRecord) => Promise<void> | void;
   onDeleteRecord?: (id: string) => Promise<void> | void;
   onClearAllRecords?: () => Promise<void> | void;
+  onUpdateCustomerInfo?: (
+    recordIds: string[],
+    updatedFields: {
+      customerName: string;
+      carPlate: string;
+      phoneNumber: string;
+      carModel?: string;
+    }
+  ) => Promise<void> | void;
 }
 
 export const AdminStandaloneDashboard: React.FC<AdminStandaloneDashboardProps> = ({
@@ -43,8 +56,9 @@ export const AdminStandaloneDashboard: React.FC<AdminStandaloneDashboardProps> =
   onSaveRecord: propSaveRecord,
   onDeleteRecord: propDeleteRecord,
   onClearAllRecords: propClearAllRecords,
+  onUpdateCustomerInfo: propUpdateCustomerInfo,
 }) => {
-  const [activeTab, setActiveTab] = useState<'records' | 'sessions' | 'logs'>('records');
+  const [activeTab, setActiveTab] = useState<'crm' | 'records' | 'sessions' | 'logs'>('crm');
 
   const [sessions, setSessions] = useState<DeviceSession[]>([]);
   const [logs, setLogs] = useState<AdminLog[]>([]);
@@ -74,6 +88,19 @@ export const AdminStandaloneDashboard: React.FC<AdminStandaloneDashboardProps> =
       unsubRecords();
     };
   }, []);
+
+  // Calculate unique customer count
+  const uniqueCustomerCount = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r) => {
+      const plateKey = (r.carPlate || '').toUpperCase().replace(/\s+/g, '').trim();
+      const phoneKey = (r.phoneNumber || '').replace(/\D/g, '').trim();
+      const nameKey = (r.customerName || '').toLowerCase().trim();
+      const key = plateKey || phoneKey || nameKey || r.id;
+      set.add(key);
+    });
+    return set.size;
+  }, [records]);
 
   // Record actions
   const handleSaveRecord = async (rec: ServiceRecord) => {
@@ -120,6 +147,43 @@ export const AdminStandaloneDashboard: React.FC<AdminStandaloneDashboardProps> =
     if (session.id === myDeviceId) {
       onLogout();
     }
+  };
+
+  // Batch Update Customer Info (Global CRM sync)
+  const handleUpdateCustomerRecords = async (
+    recordIds: string[],
+    updatedFields: {
+      customerName: string;
+      carPlate: string;
+      phoneNumber: string;
+      carModel?: string;
+    }
+  ) => {
+    // 1. Update internal state
+    setRecords((prev) =>
+      prev.map((r) => {
+        if (recordIds.includes(r.id)) {
+          return {
+            ...r,
+            customerName: updatedFields.customerName,
+            carPlate: updatedFields.carPlate,
+            phoneNumber: updatedFields.phoneNumber,
+            ...(updatedFields.carModel ? { carModel: updatedFields.carModel } : {}),
+          };
+        }
+        return r;
+      })
+    );
+
+    // 2. Delegate to parent if provided
+    if (propUpdateCustomerInfo) {
+      await propUpdateCustomerInfo(recordIds, updatedFields);
+    } else {
+      // Direct cloud sync fallback
+      await updateCustomerRecordsInCloud(recordIds, updatedFields);
+    }
+
+    showToast(`✅ Mijoz "${updatedFields.customerName}" ma'lumotlari muvaffaqiyatli saqlandi!`);
   };
 
   // Filtering Logs - STRICTLY FOR DAEWOONARGIZ
@@ -177,40 +241,41 @@ export const AdminStandaloneDashboard: React.FC<AdminStandaloneDashboardProps> =
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-500 selection:text-white">
-      {/* Top Navbar */}
+      {/* Top Navbar - Clean mobile-responsive layout */}
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-2xl">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/30">
+        <div className="max-w-6xl mx-auto px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/30 shrink-0">
               <Shield className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black text-white tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
+                <h1 className="text-sm sm:text-lg font-black text-white tracking-tight truncate">
                   Super Admin Markazi
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-extrabold text-[10px] border border-purple-500/30">
+                <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 font-black text-[9px] sm:text-[10px] border border-purple-500/30 shrink-0">
                   admindw 🔑
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Faol seanslar va tizim kirish loglari monitoringi
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">
+                Mijozlar CRM & monitoring boshqaruvi
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-mono text-purple-300">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="hidden md:flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-mono text-purple-300">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>{username}</span>
             </div>
 
             <button
               onClick={onLogout}
-              className="px-4 py-2 bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800/80 text-xs font-extrabold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 bg-red-950/80 hover:bg-red-900 active:bg-red-950 text-red-300 border border-red-800/80 text-xs font-extrabold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md shrink-0"
+              title="Tizimdan chiqish"
             >
-              <LogOut className="w-4 h-4" />
-              <span>Chiqish</span>
+              <LogOut className="w-3.5 h-3.5 text-red-400" />
+              <span className="hidden sm:inline">Chiqish</span>
             </button>
           </div>
         </div>
@@ -225,47 +290,83 @@ export const AdminStandaloneDashboard: React.FC<AdminStandaloneDashboardProps> =
       )}
 
       {/* Main Container */}
-      <main className="max-w-6xl mx-auto px-3.5 sm:px-6 lg:px-8 py-6 sm:py-8 pb-16 flex-1 w-full space-y-6 my-2 sm:my-4">
-        {/* Navigation Tabs */}
-        <div className="bg-slate-900 p-2 rounded-2xl border border-slate-800 flex items-center gap-2 overflow-x-auto shadow-lg">
+      <main className="max-w-6xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-7 pb-16 flex-1 w-full space-y-5 my-1 sm:my-2">
+        {/* Navigation Tabs - Responsive Grid with ZERO horizontal scroll */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2.5 bg-slate-900/90 p-1.5 sm:p-2 rounded-2xl border border-slate-800 shadow-xl">
           <button
-            onClick={() => setActiveTab('records')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-              activeTab === 'records'
+            onClick={() => setActiveTab('crm')}
+            className={`py-2.5 px-2 sm:py-3 sm:px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'crm'
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
             }`}
           >
-            <Database className="w-4 h-4" />
-            <span>📋 Xizmatlar & Mijozlar Bazasi ({records.length})</span>
+            <Users className="w-4 h-4 shrink-0 text-purple-300" />
+            <span className="truncate">Mijozlar CRM</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-950/80 text-purple-200 border border-purple-500/30 font-mono shrink-0">
+              {uniqueCustomerCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('records')}
+            className={`py-2.5 px-2 sm:py-3 sm:px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'records'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+            }`}
+          >
+            <Wrench className="w-4 h-4 shrink-0 text-indigo-300" />
+            <span className="truncate">Xizmatlar</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-950/80 text-indigo-200 border border-indigo-500/30 font-mono shrink-0">
+              {records.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveTab('sessions')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`py-2.5 px-2 sm:py-3 sm:px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'sessions'
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
             }`}
           >
-            <Smartphone className="w-4 h-4" />
-            <span>📱 Faol daewoonargiz Seanslari ({sortedSessions.length})</span>
+            <Smartphone className="w-4 h-4 shrink-0 text-blue-300" />
+            <span className="truncate">Faol Seanslar</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-950/80 text-blue-200 border border-blue-500/30 font-mono shrink-0">
+              {sortedSessions.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveTab('logs')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`py-2.5 px-2 sm:py-3 sm:px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'logs'
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
             }`}
           >
-            <FileText className="w-4 h-4" />
-            <span>📊 Tizim va Kirish Loglari ({filteredLogs.length})</span>
+            <Shield className="w-4 h-4 shrink-0 text-emerald-300" />
+            <span className="truncate">Tizim Loglari</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-950/80 text-emerald-200 border border-emerald-500/30 font-mono shrink-0">
+              {filteredLogs.length}
+            </span>
           </button>
         </div>
 
-        {/* TAB 0: All Service Records & Customers Management */}
+        {/* TAB 0: Mijozlar CRM (BY DEFAULT) */}
+        {activeTab === 'crm' && (
+          <AdminCustomerCrm
+            records={records}
+            currentUsername={username}
+            onSelectCustomerService={() => {
+              setActiveTab('records');
+            }}
+            onUpdateCustomerRecords={handleUpdateCustomerRecords}
+          />
+        )}
+
+        {/* TAB 1: All Service Records Management */}
         {activeTab === 'records' && (
           <AdminRecordsManager
             records={records}
@@ -395,26 +496,28 @@ export const AdminStandaloneDashboard: React.FC<AdminStandaloneDashboardProps> =
                 />
               </div>
 
-              <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                 <span className="px-3 py-1.5 rounded-xl bg-purple-950/80 border border-purple-800/80 text-purple-300 text-xs font-extrabold flex items-center gap-1.5 shrink-0">
                   <UserCheck className="w-3.5 h-3.5 text-purple-400" />
                   <span>daewoonargiz loglari</span>
                 </span>
 
-                <span className="text-xs text-slate-400">Davr:</span>
-                <select
-                  value={logPeriod}
-                  onChange={(e) => setLogPeriod(e.target.value as any)}
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-purple-300 font-bold focus:outline-none"
-                >
-                  <option value="all">Barcha vaqtlardagi loglar</option>
-                  <option value="today">Bugungi loglar</option>
-                  <option value="this_month">Shu oygi loglar</option>
-                </select>
+                <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5">
+                  <span className="text-xs text-slate-400 font-semibold">Davr:</span>
+                  <select
+                    value={logPeriod}
+                    onChange={(e) => setLogPeriod(e.target.value as any)}
+                    className="bg-transparent text-xs text-purple-300 font-bold focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-slate-900 text-white">Barcha vaqtlardagi loglar</option>
+                    <option value="today" className="bg-slate-900 text-white">Bugungi loglar</option>
+                    <option value="this_month" className="bg-slate-900 text-white">Shu oygi loglar</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 max-h-[600px] overflow-y-auto shadow-xl">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 space-y-2.5 max-h-[600px] overflow-y-auto shadow-xl">
               {filteredLogs.length === 0 ? (
                 <div className="py-16 text-center text-slate-500 text-xs">
                   Hech qanday tizim loglari topilmadi.
@@ -434,31 +537,33 @@ export const AdminStandaloneDashboard: React.FC<AdminStandaloneDashboardProps> =
                   return (
                     <div
                       key={log.id}
-                      className="p-4 bg-slate-950/80 border border-slate-800/80 rounded-xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-slate-700 transition-all shadow-sm"
+                      className="p-3.5 sm:p-4 bg-slate-950/80 border border-slate-800/80 rounded-xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-3 hover:border-slate-700 transition-all shadow-sm"
                     >
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`px-2.5 py-0.5 rounded-md font-extrabold text-[11px] border ${badgeColor}`}>
+                      <div className="space-y-1.5 flex-1 w-full sm:w-auto">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded-md font-extrabold text-[10px] sm:text-[11px] border ${badgeColor}`}>
                             {log.action}
                           </span>
-                          <span className="font-bold text-white flex items-center gap-1">
+                          <span className="font-bold text-white flex items-center gap-1 text-[11px] sm:text-xs">
                             <UserCheck className="w-3.5 h-3.5 text-purple-400" />
                             {log.username}
                           </span>
                           {log.ipAddress && (
-                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-mono">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-mono">
                               IP: {log.ipAddress}
                             </span>
                           )}
                         </div>
-                        <p className="text-slate-200 text-xs font-medium leading-relaxed">{log.details}</p>
+                        <p className="text-slate-200 text-xs font-medium leading-relaxed break-words">{log.details}</p>
                       </div>
 
-                      <div className="text-right font-mono text-[11px] text-slate-400 shrink-0 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800 flex items-center gap-2">
-                        <Clock className="w-3.5 h-3.5 text-purple-400" />
-                        <span>
-                          {new Date(log.timestamp).toLocaleDateString('uz-UZ')} {new Date(log.timestamp).toLocaleTimeString('uz-UZ')}
-                        </span>
+                      <div className="w-full sm:w-auto font-mono text-[11px] text-slate-400 shrink-0 bg-slate-900/90 px-2.5 py-1.5 rounded-xl border border-slate-800 flex items-center justify-between sm:justify-start gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-purple-400" />
+                          <span>
+                            {new Date(log.timestamp).toLocaleDateString('uz-UZ')} {new Date(log.timestamp).toLocaleTimeString('uz-UZ')}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
@@ -468,6 +573,19 @@ export const AdminStandaloneDashboard: React.FC<AdminStandaloneDashboardProps> =
           </div>
         )}
       </main>
+
+      {/* Footer info bar */}
+      <footer className="mt-auto border-t border-slate-800/80 bg-slate-950/60 py-3.5 px-4 text-center">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
+            <span className="font-medium text-slate-400">Daewoo Nargiz Auto Servis CRM & Boshqaruv Markazi</span>
+          </div>
+          <div className="text-[11px] font-mono text-slate-500">
+            admindw xavfsiz seansi faol • Real vaqt rejimida sinxronlanadi
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

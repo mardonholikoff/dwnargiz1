@@ -258,6 +258,51 @@ export async function syncOfflineRecordsToCloud(records: ServiceRecord[]): Promi
 }
 
 /**
+ * Batch update customer details (name, plate, phone, model) across multiple service records in Firestore
+ */
+export async function updateCustomerRecordsInCloud(
+  recordIds: string[],
+  updatedFields: {
+    customerName: string;
+    carPlate: string;
+    phoneNumber: string;
+    carModel?: string;
+  }
+): Promise<boolean> {
+  if (!db || recordIds.length === 0) return true;
+
+  try {
+    const chunkSize = 400;
+    for (let i = 0; i < recordIds.length; i += chunkSize) {
+      const chunk = recordIds.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      const nowIso = new Date().toISOString();
+
+      const updateData: Record<string, any> = {
+        customerName: updatedFields.customerName.trim(),
+        carPlate: updatedFields.carPlate.toUpperCase().trim(),
+        phoneNumber: updatedFields.phoneNumber.trim(),
+        syncedAt: nowIso,
+      };
+      if (updatedFields.carModel) {
+        updateData.carModel = updatedFields.carModel.trim();
+      }
+
+      chunk.forEach((id) => {
+        const docRef = doc(db, RECORDS_COLLECTION, id);
+        batch.set(docRef, updateData, { merge: true });
+      });
+
+      await withTimeout(batch.commit(), 8000, null);
+    }
+    return true;
+  } catch (err) {
+    console.warn('Failed to batch update customer records in Firestore:', err);
+    return false;
+  }
+}
+
+/**
  * Catalog item management (Custom Oil types & Spare Parts)
  */
 export interface CatalogData {
