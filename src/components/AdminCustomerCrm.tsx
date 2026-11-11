@@ -27,11 +27,13 @@ import {
   Save,
   AlertTriangle,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import { ServiceRecord } from '../types';
 import { createAdminLog } from '../lib/adminSession';
 import { updateCustomerRecordsInCloud } from '../lib/firebase';
+import { getOilReminderSmsHref } from '../lib/oilUtils';
 
 interface AdminCustomerCrmProps {
   records: ServiceRecord[];
@@ -1106,6 +1108,14 @@ export const AdminCustomerCrm: React.FC<AdminCustomerCrmProps> = ({
                   >
                     <Phone className="w-3.5 h-3.5" />
                     <span>{selectedCustomer.phoneNumber}</span>
+                  </a>
+                  <a
+                    href={getOilReminderSmsHref(selectedCustomer.phoneNumber)}
+                    className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30 transition-all cursor-pointer"
+                    title="Mijozga moy eslatmasi SMS xabarini ochish"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                    <span>SMS Yuborish</span>
                   </a>
                   <span>•</span>
                   <span>Birinchi tashrif: <strong className="text-slate-200">{new Date(selectedCustomer.firstVisit).toLocaleDateString('uz-UZ')}</strong></span>

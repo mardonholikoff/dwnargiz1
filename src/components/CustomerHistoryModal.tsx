@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { ServiceRecord } from '../types';
-import { X, User, Phone, Car, Gauge, Wrench, Calendar, DollarSign, Printer, Plus, Edit2, Clock, CheckCircle2, AlertTriangle, Droplet } from 'lucide-react';
+import { X, User, Phone, Car, Gauge, Wrench, Calendar, DollarSign, Printer, Plus, Edit2, Clock, CheckCircle2, AlertTriangle, Droplet, MessageSquare } from 'lucide-react';
 import { createAdminLog } from '../lib/adminSession';
+import { getOilReminderSmsHref } from '../lib/oilUtils';
 
 interface CustomerHistoryModalProps {
   customerPlate: string | null;
@@ -74,13 +75,22 @@ export const CustomerHistoryModal: React.FC<CustomerHistoryModalProps> = ({
               <User className="w-5 h-5 text-blue-400" />
               <span>{latestRecord.customerName}</span>
             </h2>
-            <div className="flex items-center gap-4 text-xs text-slate-400 pt-1">
+            <div className="flex items-center gap-3 text-xs text-slate-400 pt-1 flex-wrap">
               <a
                 href={`tel:${latestRecord.phoneNumber.replace(/\s+/g, '')}`}
                 className="flex items-center gap-1.5 text-blue-400 hover:underline font-mono font-semibold"
+                title="Qo'ng'iroq qilish"
               >
                 <Phone className="w-3.5 h-3.5" />
                 {latestRecord.phoneNumber}
+              </a>
+              <a
+                href={getOilReminderSmsHref(latestRecord.phoneNumber)}
+                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30 transition-all cursor-pointer"
+                title="Mijozga moy eslatmasi SMS xabari yuborish"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                <span>SMS Yuborish</span>
               </a>
               <span className="text-slate-600">•</span>
               <span>Jami servislar: <strong className="text-white">{totalVisits} ta</strong></span>

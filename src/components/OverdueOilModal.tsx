@@ -1,7 +1,12 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ServiceRecord } from '../types';
 import { createAdminLog } from '../lib/adminSession';
-import { getOverdueOilCustomers } from '../lib/oilUtils';
+import {
+  getOverdueOilCustomers,
+  OIL_REMINDER_SMS_TEMPLATE,
+  getOilReminderSmsHref,
+  formatSmsPhoneNumber
+} from '../lib/oilUtils';
 import {
   X,
   Droplet,
@@ -15,7 +20,12 @@ import {
   AlertTriangle,
   ChevronRight,
   ShieldAlert,
-  User
+  User,
+  Copy,
+  Check,
+  FileText,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface OverdueOilModalProps {
@@ -35,6 +45,9 @@ export const OverdueOilModal: React.FC<OverdueOilModalProps> = ({
   onNewServiceForCustomer,
   username = 'daewoonargiz',
 }) => {
+  const [showTemplate, setShowTemplate] = useState<boolean>(false);
+  const [copiedTemplate, setCopiedTemplate] = useState<boolean>(false);
+
   useEffect(() => {
     if (isOpen) {
       createAdminLog(
@@ -44,6 +57,14 @@ export const OverdueOilModal: React.FC<OverdueOilModalProps> = ({
       );
     }
   }, [isOpen, username]);
+
+  const handleCopyTemplate = () => {
+    try {
+      navigator.clipboard.writeText(OIL_REMINDER_SMS_TEMPLATE);
+      setCopiedTemplate(true);
+      setTimeout(() => setCopiedTemplate(false), 2000);
+    } catch {}
+  };
 
   // Compute unique customers and their latest oil service record
   const overdueCustomers = useMemo(() => {
@@ -78,13 +99,67 @@ export const OverdueOilModal: React.FC<OverdueOilModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowTemplate((prev) => !prev)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                showTemplate
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md shadow-amber-500/10'
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+              }`}
+              title="SMS xabar shablonini ko'rish va nusxa olish"
+            >
+              <FileText className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">SMS Shabloni</span>
+              <span className="sm:hidden">SMS</span>
+              {showTemplate ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* SMS Template Preview Drawer */}
+        {showTemplate && (
+          <div className="p-4 bg-slate-950 border-b border-amber-500/30 animate-fadeIn">
+            <div className="max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                  <MessageSquare className="w-4 h-4 text-amber-400" />
+                  <span>Avtomatik SMS Xabar Shabloni:</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyTemplate}
+                  className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  {copiedTemplate ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">Nusxalandi!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Nusxa olish</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <pre className="text-xs text-slate-200 font-sans whitespace-pre-wrap bg-slate-950 p-3 rounded-lg border border-slate-800 leading-relaxed select-all">
+                {OIL_REMINDER_SMS_TEMPLATE}
+              </pre>
+              <p className="text-[11px] text-slate-400">
+                ℹ️ Har qanday telefondan (Android yoki iPhone) mijoz kartasidagi <strong>"SMS Xabar"</strong> tugmasi bosilganda, ushbu xabar matni va mijoz raqami SMS ilovangizda jo'natishga tayyor holatda ochiladi.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Customer Cards List */}
         <div className="p-4 overflow-y-auto space-y-3 flex-1">
@@ -175,15 +250,26 @@ export const OverdueOilModal: React.FC<OverdueOilModalProps> = ({
                         </div>
 
                         {/* Phone & Service Count */}
-                        <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
+                        <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
                           {formattedPhone ? (
-                            <a
-                              href={`tel:${cleanPhone}`}
-                              className="text-blue-400 hover:text-blue-300 font-mono font-bold flex items-center gap-1"
-                            >
-                              <Phone className="w-3.5 h-3.5 text-blue-400" />
-                              <span>{formattedPhone}</span>
-                            </a>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={`tel:${cleanPhone}`}
+                                className="text-blue-400 hover:text-blue-300 font-mono font-bold flex items-center gap-1"
+                              >
+                                <Phone className="w-3.5 h-3.5 text-blue-400" />
+                                <span>{formattedPhone}</span>
+                              </a>
+                              <span className="text-slate-600">•</span>
+                              <a
+                                href={getOilReminderSmsHref(formattedPhone)}
+                                className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 text-[11px] bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30 transition-colors"
+                                title="SMS eslatma jo'natish"
+                              >
+                                <MessageSquare className="w-3 h-3 text-amber-400" />
+                                <span>SMS</span>
+                              </a>
+                            </div>
                           ) : (
                             <span className="text-slate-500 italic">Telefon yo'q</span>
                           )}
@@ -229,16 +315,30 @@ export const OverdueOilModal: React.FC<OverdueOilModalProps> = ({
                       <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                     </button>
 
-                    {/* Quick Call & New Service Buttons */}
-                    <div className="flex items-center gap-2">
+                    {/* Quick SMS, Call & New Service Buttons */}
+                    <div className="flex items-center gap-2 flex-wrap">
                       {formattedPhone && (
-                        <a
-                          href={`tel:${cleanPhone}`}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer"
-                        >
-                          <Phone className="w-3.5 h-3.5 text-white" />
-                          <span>Qo'ng'iroq</span>
-                        </a>
+                        <>
+                          {/* SMS Xabar Yuborish (Qo'ng'iroq oldida) */}
+                          <a
+                            href={getOilReminderSmsHref(formattedPhone)}
+                            className="px-3 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-amber-900/30 transition-all cursor-pointer hover:scale-105"
+                            title="SMS yuborishga avtomatik o'tish"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 text-white" />
+                            <span>SMS Xabar</span>
+                          </a>
+
+                          {/* Qo'ng'iroq qilish */}
+                          <a
+                            href={`tel:${cleanPhone}`}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer hover:scale-105"
+                            title="Qo'ng'iroq qilish"
+                          >
+                            <Phone className="w-3.5 h-3.5 text-white" />
+                            <span>Qo'ng'iroq</span>
+                          </a>
+                        </>
                       )}
 
                       <button
@@ -251,7 +351,7 @@ export const OverdueOilModal: React.FC<OverdueOilModalProps> = ({
                             carModel
                           );
                         }}
-                        className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer"
+                        className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer hover:scale-105 active:scale-95"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Yangi Xizmat Yozish</span>
@@ -265,13 +365,14 @@ export const OverdueOilModal: React.FC<OverdueOilModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
-          <span>
-            💡 Ish maslahati: Mijozlarga doimiy tushuntirish berib, moy almashtirish vaqtini eslatib turish mumkin.
-          </span>
+        <div className="p-3.5 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 shrink-0">
+          <div className="flex items-center gap-2 text-slate-400 text-[11px] sm:text-xs">
+            <span className="text-amber-400 font-bold">💬 SMS Xizmati:</span>
+            <span>Mijoz kartasidagi "SMS Xabar" tugmasi bosilganda telefoningizda tayyor xabar bilan SMS ochiladi.</span>
+          </div>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl cursor-pointer"
+            className="w-full sm:w-auto px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl cursor-pointer"
           >
             Yopish
           </button>

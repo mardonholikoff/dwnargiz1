@@ -131,3 +131,45 @@ export function getOverdueOilCustomers(records: ServiceRecord[]): OverdueCustome
 
   return overdueList;
 }
+
+/**
+ * Standard Oil Reminder SMS Template for Customers
+ */
+export const OIL_REMINDER_SMS_TEMPLATE = `Assalomu alaykum, hurmatli mijoz!
+
+Avtomobilingiz moyini almashtirish vaqti kelgan bo‘lishi mumkin. Dvigatelingizni asrang, moy almashtirish muddatini o‘tkazib yubormang!
+
+Manzil: Ko‘prikboshi, soy oldi — Zamena masla
+Telefon: 99 904 63 92
+
+Sizni kutib qolamiz!`;
+
+/**
+ * Format phone number cleanly for SMS URI
+ */
+export function formatSmsPhoneNumber(phone: string): string {
+  if (!phone) return '';
+  const cleaned = phone.replace(/[^\d+]/g, '');
+  if (cleaned.startsWith('+')) return cleaned;
+  if (cleaned.startsWith('998') && cleaned.length === 12) {
+    return `+${cleaned}`;
+  }
+  if (cleaned.length === 9) {
+    return `+998${cleaned}`;
+  }
+  return cleaned;
+}
+
+/**
+ * Build universal sms: URL compatible with both iOS (Safari) and Android (Chrome/Default)
+ */
+export function getOilReminderSmsHref(phone: string, customText?: string): string {
+  const formattedPhone = formatSmsPhoneNumber(phone);
+  const text = customText || OIL_REMINDER_SMS_TEMPLATE;
+  const isIOS =
+    typeof navigator !== 'undefined' &&
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+  const separator = isIOS ? '&body=' : '?body=';
+  return `sms:${formattedPhone}${separator}${encodeURIComponent(text)}`;
+}
